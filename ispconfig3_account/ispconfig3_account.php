@@ -182,7 +182,7 @@ class ispconfig3_account extends rcube_plugin
 
 		return $out;
 	} 
-	
+
 	/* Uses Ispconfig SOAP to get all email aliases for this user. */
 	function _ispconfig_getmailaliases() {
 		try
@@ -197,7 +197,7 @@ class ispconfig3_account extends rcube_plugin
 		}
 		return $alias;
 	}
-	
+
 	/* Create a array with email and -aliases */
 	function _list_mails() {
 		// Include current email address. (we use username since this is used as reference for destination in the soap call too)
@@ -216,11 +216,11 @@ class ispconfig3_account extends rcube_plugin
 	{
 		$form = $p['form'];
 		$record = $p['record'];
-		
+
 		$mails = $this->_list_mails();
 
 
-		// Adjust the form. 
+		// Adjust the form.
 		// @TODO: 'select' type support for 'rcmail_get_edit_field'
 		// @TODO: remove name, id and return emails list as attribute in stead of setting 'value' (if above todo is implemented)
 		$form['addressing']['content']['email']['size'] = 1;
@@ -244,9 +244,9 @@ class ispconfig3_account extends rcube_plugin
 	{
 		$record = $p['record'];
 		if (isset($record['email']) && (array_search($record['email'], $this->_list_mails()) == FALSE)) {
-			write_log('errors', 'ISPConfig Identity Update: A bad user tried to create an alias he does not own: ' . $record['email']);	
+			write_log('errors', 'ISPConfig Identity Update: A bad user tried to create an alias he does not own: ' . $record['email']);
 			return array('abort' => TRUE, 'message' => $this->gettext('acc_error_noalias'));
-		} 
+		}
 		return $p;
 	}
 
