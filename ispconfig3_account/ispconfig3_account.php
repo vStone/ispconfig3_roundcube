@@ -28,6 +28,10 @@ class ispconfig3_account extends rcube_plugin
 		$this->register_action('plugin.ispconfig3_account.show', array($this, 'init_html'));
 		
 		$this->include_script('account.js');
+
+		// Adding hooks for improving identities.
+		$this->add_hook('identity_form', array($this, 'hook_identity_form'));
+		$this->add_hook('identity_update', array($this, 'hook_identity_update'));
 	}
 
 	function init_html()
@@ -156,22 +160,13 @@ class ispconfig3_account extends rcube_plugin
 		$alias_table = new html_table(array('id' => 'alias-table', 'class' => 'records-table', 'cellspacing' => '0', 'cols' => 1));
 		$alias_table->add_header(array('width' => '100%'), $this->gettext('mail'));
 
-		try
-		{
-			$session_id = $this->soap->login($this->rcmail_inst->config->get('remote_soap_user'),$this->rcmail_inst->config->get('remote_soap_pass'));
-			$alias = $this->soap->mail_alias_get($session_id, array('destination' => $this->rcmail_inst->user->data['username'], 'type' => 'alias', 'active' => 'y'));
-			$this->soap->logout($session_id);
+		$alias = $this->_ispconfig_getmailaliasses();
 			
-			for ( $i = 0; $i < count($alias); $i++ )
-			{
-				$class = ( $class == 'odd' ? 'even' : 'odd' );
-				$alias_table->set_row_attribs(array('class' => $class));
-				$alias_table->add('', $alias[$i]['source']);
-			}
-		}
-		catch (SoapFault $e)
+		for ( $i = 0; $i < count($alias); $i++ )
 		{
-			$this->rcmail_inst->output->command('display_message', 'Soap Error: '.$e->getMessage(), 'error');
+			$class = ( $class == 'odd' ? 'even' : 'odd' );
+			$alias_table->set_row_attribs(array('class' => $class));
+			$alias_table->add('', $alias[$i]['source']);
 		}
 		
 		if(count($alias) == 0)
@@ -187,5 +182,73 @@ class ispconfig3_account extends rcube_plugin
 
 		return $out;
 	} 
+	
+	/* Uses Ispconfig SOAP to get all email aliases for this user. */
+	function _ispconfig_getmailaliases() {
+		try
+		{
+			$session_id = $this->soap->login($this->rcmail_inst->config->get('remote_soap_user'),$this->rcmail_inst->config->get('remote_soap_pass'));
+			$alias = $this->soap->mail_alias_get($session_id, array('destination' => $this->rcmail_inst->user->data['username'], 'type' => 'alias', 'active' => 'y'));
+			$this->soap->logout($session_id);
+		}
+		catch (SoapFault $e)
+		{
+			$this->rcmail_inst->output->command('display_message', 'Soap Error: '.$e->getMessage(), 'error');
+		}
+		return $alias;
+	}
+	
+	/* Create a array with email and -aliases */
+	function _list_mails() {
+		// Include current email address. (we use username since this is used as reference for destination in the soap call too)
+		$result[] = $this->rcmail_inst->user->data['username'];
+		// Add all possible aliases
+		$alias = $this->_ispconfig_getmailaliases();
+		for ( $i = 0; $i < count($alias); $i++ )
+		{
+			$result[] = $alias[$i]['source'];
+		}
+		return $result;
+	}
+
+	/* Adjust the identity edit/add form */
+	function hook_identity_form($p)
+	{
+		$form = $p['form'];
+		$record = $p['record'];
+		
+		$mails = $this->_list_mails();
+
+
+		// Adjust the form. 
+		// @TODO: 'select' type support for 'rcmail_get_edit_field'
+		// @TODO: remove name, id and return emails list as attribute in stead of setting 'value' (if above todo is implemented)
+		$form['addressing']['content']['email']['size'] = 1;
+		$form['addressing']['content']['email']['type'] = 'select';
+		$form['addressing']['content']['email']['multiple'] = false;
+		$form['addressing']['content']['email']['class'] = '';
+		$form['addressing']['content']['email']['id'] = 'rcmfd_email';
+		$form['addressing']['content']['email']['name'] = '_email';
+
+		$sel = new html_select($form['addressing']['content']['email']);
+		$sel->add($mails, $mails);
+
+		$form['addressing']['content']['email']['value'] = $sel->show($record['email']);
+
+		return array('form' => $form, 'record' => $record);
+
+	}
+
+	/* Check if no naughty men have adjusted the form to use an invalid email address. */
+	function hook_identity_update($p)
+	{
+		$record = $p['record'];
+		if (isset($record['email']) && (array_search($record['email'], $this->_list_mails()) == FALSE)) {
+			write_log('errors', 'ISPConfig Identity Update: A bad user tried to create an alias he does not own: ' . $record['email']);	
+			return array('abort' => TRUE, 'message' => $this->gettext('acc_error_noalias'));
+		} 
+		return $p;
+	}
+
 }
 ?>

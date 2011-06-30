@@ -11,4 +11,5 @@ $labels['acc_wblist'] = 'White/Black List';
 $labels['acc_lastlogin'] = 'Laatste keer ingelogd:';
 $labels['acc_defaultidentity'] = 'Standaard identiteit';
 $labels['acc_noalias'] = 'Geen e-mailadressen verbonden';
+$labels['acc_error_noalias'] = 'Geen toegang om dit email adres te gebruiken';
 ?>
