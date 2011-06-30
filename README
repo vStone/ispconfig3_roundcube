@@ -1,0 +1,10 @@
+== About ==
+
+This collection of plugins allows roundcube to integrate with ispconfig3.
+
+== Origin ==
+
+
+The original code (from svn) is stored in the 'upstream' branch. If the original owner (Horfic) continues development, this branch will be used to merge his changes into the ones I have included in the master branch.
+
+
